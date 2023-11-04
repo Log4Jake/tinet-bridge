@@ -1,4 +1,27 @@
+from oled_091 import SSD1306
+from subprocess import check_output
+from time import sleep
+from datetime import datetime
+from os import path
+import serial
+import RPi.GPIO as GPIO
+GPIO.setmode(GPIO.BCM)
+GPIO.setwarnings(False)
+GPIO.setup(17,GPIO.OUT)
+DIR_PATH = path.abspath(path.dirname(__file__))
+
+def print_oled(textforoled):
+    display.PrintText(str(textforoled), FontSize=10)
+    display.ShowImage()
+
+
+DefaultFont = path.join(DIR_PATH, "Fonts/GothamLight.ttf")
+display = SSD1306()
+
+print_oled("Python Started")
+
 import io
+import time
 import socket
 import sys
 import os
@@ -12,7 +35,7 @@ import serial.threaded
 import time
 from serial.tools import list_ports
 import logging
-
+time.sleep(1)
 init(autoreset=True)
 
 # ---------CONFIG--------- #
@@ -50,7 +73,7 @@ def find_serial_port():
         time.sleep(0.2)
         ports = list(serial.tools.list_ports.comports())
         for port in ports:
-            if "USB Serial Device" in port.description or "TI-84" in port.description:
+            if "USB Serial Device yy uiy" in port.description or "TI-84" in port.description:
                 return port
         
 
@@ -69,6 +92,7 @@ class SocketThread(threading.Thread):
 
         if self.serial_manager.alive:
             self.serial_manager.write("internetDisconnected".encode())
+            print_oled("Internet Disconnected")
             print("Notified client bridge got disconnected!")
         
         self.socket.close()
@@ -81,14 +105,17 @@ class SocketThread(threading.Thread):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
         print("Creating TCP socket...")
+        print_oled("Creating TCP socket...")
         self.socket.settimeout(10)
 
         print("Connecting to TCP socket...")
+        print_oled("Connecting to TCP socket...")
         # try:
         self.socket.connect((SERVER_ADDRESS, SERVER_PORT))
         self.alive = True
 
         self.serial_manager.write("bridgeConnected\0".encode())
+        print_oled("Bridge Connected")
         print("Client got notified he was connected to the bridge!")
 
         while self.alive:
@@ -116,10 +143,12 @@ class SocketThread(threading.Thread):
             elif decoded_server_response == "DISCONNECT":  # calculator does not understand this and will crash
                 self.alive = False
             elif decoded_server_response == "ALREADY_CONNECTED":
+                print_oled("Already Connected")
                 if DEBUG:
                     print("Skipping telling calc to prevent crash")  # Until the bug is fixed
             elif self.serial_manager.alive:
                 self.serial_manager.write(decoded_server_response.encode())
+                print_oled({decoded_server_response})
                 print(f'W - serial: {decoded_server_response}')
 
     def write(self, data):
@@ -168,6 +197,7 @@ class SerialThread(threading.Thread):
                 print(f"Error: {e}")
                 if ENABLE_RECONNECT:
                     print("Trying to reconnect...")
+                    print_oled("Trying to reconnect...")
 
                     while True:
                         time.sleep(1)
@@ -178,6 +208,7 @@ class SerialThread(threading.Thread):
                                 self.serial = serial.Serial(find_serial_port().device, baudrate=9600, timeout=3)
                             self.write("bridgeConnected\0".encode())
                             print("Reconnected!")
+                            print_oled("Reconnected")
                             break
                         except Exception:
                             pass
